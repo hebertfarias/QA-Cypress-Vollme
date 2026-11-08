@@ -40,6 +40,10 @@ jobs:
         run: npm ci
         working-directory: web
 
+      - name: Compile backend
+        run: npm run compile
+        working-directory: server
+
       - name: Start backend
         run: |
           npm start > /tmp/vollmed-backend.log 2>&1 &
@@ -54,14 +58,18 @@ jobs:
         uses: cypress-io/github-action@v6
         with:
           install: false
-          wait-on: 'http://localhost:3000,http://localhost:8080'
+          wait-on: "http://localhost:3000,http://localhost:8080"
           wait-on-timeout: 120
           spec: |
             cypress/e2e/cadastro-sucesso.cy.js
             cypress/e2e/login-clinica.cy.js
+            cypress/e2e/login-api.cy.js
             cypress/e2e/dashboard.cy.js
+        env:
+          CYPRESS_EMAIL: ${{ secrets.CYPRESS_EMAIL }}
+          CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
 
-      - name: Upload test evidence
+      - name: Upload test evidence and service logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
