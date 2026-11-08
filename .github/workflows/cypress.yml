@@ -54,6 +54,16 @@ jobs:
           CI=false npm start > /tmp/vollmed-frontend.log 2>&1 &
         working-directory: web
 
+      - name: Validate authenticated test credentials
+        env:
+          CYPRESS_EMAIL: ${{ secrets.CYPRESS_EMAIL }}
+          CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
+        run: |
+          if [ -z "$CYPRESS_EMAIL" ] || [ -z "$CYPRESS_PASSWORD" ]; then
+            echo "::error::Configure CYPRESS_EMAIL and CYPRESS_PASSWORD in repository Actions secrets. Authenticated tests must not be silently skipped."
+            exit 1
+          fi
+
       - name: Run Cypress E2E
         uses: cypress-io/github-action@v6
         with:
