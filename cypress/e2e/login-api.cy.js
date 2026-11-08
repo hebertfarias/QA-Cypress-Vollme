@@ -27,46 +27,50 @@ describeWithCredentials("Testes em API", () => {
 
   context("Validações em respostas da API", () => {
     beforeEach(() => {
-      cy.fixture("especialistas").as("especialistas");
       cy.loginApi(Cypress.env("email"), Cypress.env("senha"));
     });
 
-    it("POST em especialistas", () => {
-      cy.get("@especialistas").then((dados) => {
-        const especialista = dados.especialistas[0];
-        cy.request({
-          method: "POST",
-          url: Cypress.env("api_clinica"),
-          body: {
-            nome: especialista.nome,
-            email: especialista.email,
-            senha: especialista.senha,
-            endereco: {
-              cep: especialista.cep,
-              rua: especialista.rua,
-              numero: especialista.numero,
-              complemento: especialista.complemento,
-              estado: especialista.estado
-            }
-          }
-        }).then((response) => {
-          expect(response.status).to.eq(201);
-          expect(response.body).to.have.property("id");
-          expect(response.body).to.have.property("nome");
-          expect(response.body).to.have.property("email");
-        });
-      });
-    });
+    it("POST cadastra uma clínica e retorna HTTP 201", () => {
+      const identificador = Date.now();
 
-    it("Requisição incorreta em criação de especialista", () => {
       cy.request({
         method: "POST",
         url: Cypress.env("api_clinica"),
-        body: { nome: "Camila", email: "camila123@exemplo" },
+        body: {
+          nome: `Clínica Cypress ${identificador}`,
+          email: `cypress-${identificador}@example.com`,
+          senha: "SenhaTeste123",
+          endereco: {
+            cep: "57000000",
+            rua: "Rua dos Testes",
+            numero: 100,
+            complemento: "Sala de automação",
+            estado: "AL"
+          }
+        }
+      }).then((response) => {
+        expect(response.status).to.eq(201);
+        expect(response.body).to.have.property("id");
+        expect(response.body.nome).to.include("Clínica Cypress");
+        expect(response.body.email).to.include("@example.com");
+      });
+    });
+
+    it("Rejeita cadastro de clínica sem endereço com HTTP 400", () => {
+      cy.request({
+        method: "POST",
+        url: Cypress.env("api_clinica"),
+        body: {
+          nome: "Clínica incompleta",
+          email: "incompleta@example.com",
+          senha: "SenhaTeste123"
+        },
         failOnStatusCode: false
       }).then((response) => {
-        expect(response.status).to.eq(500);
-        expect(response.body).to.have.property("message");
+        expect(response.status).to.eq(400);
+        expect(response.body.message).to.eq(
+          "Informe nome, e-mail, senha e endereço completo da clínica."
+        );
       });
     });
   });
