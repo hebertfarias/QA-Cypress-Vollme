@@ -18,34 +18,15 @@ dotenv.config({ path: '.env' })
 
 const app = express()
 
-const PORT = 8080
+const PORT = Number(process.env.SERVER_PORT ?? 8080)
 const corsOpts = {
   origin: '*',
-
-  methods: [
-    'GET',
-    'POST',
-    'PUT',
-    'DELETE'
-  ],
-
-  allowedHeaders: [
-    'Content-Type', 'Authorization', 'Accept'
-  ],
-
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }
 
 app.use(cors(corsOpts))
-
 app.use(express.json())
-
-AppDataSource.initialize()
-  .then(() => {
-    console.log('App Data Source inicializado')
-  })
-  .catch((error) => {
-    console.error(error)
-  })
 
 // Rota inicial de GET
 app.get('/', (req, res) => {
@@ -53,7 +34,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/favicon.ico', (req, res) => {
-  res.status(200).send(`<h1>favicon</h1>`)
+  res.status(200).send('<h1>favicon</h1>')
 })
 
 rotaPaciente(app)
@@ -65,8 +46,17 @@ rotaPlanoDeSaude(app)
 rotaAuth(app)
 app.use(errorMiddleware)
 
-// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-app.listen(PORT, () => { console.log(`server running on port ${PORT}`) }
-)
+// Só aceita requisições depois que o banco estiver pronto.
+AppDataSource.initialize()
+  .then(() => {
+    console.log('App Data Source inicializado')
+    app.listen(PORT, () => {
+      console.log(`server running on port ${PORT}`)
+    })
+  })
+  .catch((error) => {
+    console.error('Falha ao inicializar o banco de dados:', error)
+    process.exitCode = 1
+  })
 
 export default app
