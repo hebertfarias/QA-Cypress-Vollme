@@ -7,14 +7,20 @@ on:
       - chore/portfolio-quality-improvements
       - testes
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: vollmed-cypress-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,15 +50,11 @@ jobs:
         run: npm run compile
         working-directory: server
 
-      - name: Start backend
-        run: |
-          npm start > /tmp/vollmed-backend.log 2>&1 &
-        working-directory: server
-
-      - name: Start frontend
-        run: |
-          CI=false npm start > /tmp/vollmed-frontend.log 2>&1 &
+      - name: Build frontend
+        run: npm run build
         working-directory: web
+        env:
+          CI: "false"
 
       - name: Validate authenticated test credentials
         env:
@@ -63,6 +65,19 @@ jobs:
             echo "::error::Configure CYPRESS_EMAIL and CYPRESS_PASSWORD in repository Actions secrets. Authenticated tests must not be silently skipped."
             exit 1
           fi
+
+      - name: Start backend
+        run: npm start > /tmp/vollmed-backend.log 2>&1 &
+        working-directory: server
+        env:
+          SECRET: vollmed-ci-jwt-secret
+          SECRET_KEY: vollmed-ci-encryption-key
+
+      - name: Start frontend
+        run: npm start > /tmp/vollmed-frontend.log 2>&1 &
+        working-directory: web
+        env:
+          CI: "false"
 
       - name: Run Cypress E2E
         uses: cypress-io/github-action@v6
@@ -78,6 +93,7 @@ jobs:
         env:
           CYPRESS_EMAIL: ${{ secrets.CYPRESS_EMAIL }}
           CYPRESS_PASSWORD: ${{ secrets.CYPRESS_PASSWORD }}
+          CYPRESS_BASE_URL: http://localhost:3000
 
       - name: Upload test evidence and service logs
         if: always()
