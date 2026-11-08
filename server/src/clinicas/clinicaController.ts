@@ -1,4 +1,3 @@
-
 import { type Request, type Response } from 'express'
 import { AppDataSource } from '../data-source.js'
 import { Endereco } from '../enderecos/enderecoEntity.js'
@@ -6,14 +5,25 @@ import { Especialista } from '../especialistas/EspecialistaEntity.js'
 import { mapeiaPlano } from '../utils/planoSaudeUtils.js'
 import { Clinica } from './clinicaEntity.js'
 import { encryptPassword } from '../utils/senhaUtils.js'
+import { AppError, Status } from '../error/ErrorHandler.js'
 
 export const criarClinica = async (req: Request, res: Response): Promise<void> => {
   const {
     endereco, nome,
     email, senha,
-
     planoDeSaudeAceitos
   } = req.body
+
+  const enderecoValido = endereco !== undefined &&
+    endereco !== null &&
+    endereco.cep !== undefined &&
+    endereco.rua !== undefined &&
+    endereco.estado !== undefined &&
+    endereco.numero !== undefined
+
+  if (!nome || !email || !senha || !enderecoValido) {
+    throw new AppError('Informe nome, e-mail, senha e endereço completo da clínica.', Status.BAD_REQUEST)
+  }
 
   const senhaCriptografada = encryptPassword(senha)
 
@@ -37,7 +47,7 @@ export const criarClinica = async (req: Request, res: Response): Promise<void> =
   }
 
   await AppDataSource.manager.save(Clinica, clinica)
-  res.json(clinica)
+  res.status(Status.CREATED).json(clinica)
 }
 
 export const listarClinicas = async (req: Request, res: Response): Promise<void> => {
