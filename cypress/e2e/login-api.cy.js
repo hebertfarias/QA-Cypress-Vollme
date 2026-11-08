@@ -4,6 +4,7 @@ const describeWithCredentials = hasCredentials ? describe : describe.skip;
 describeWithCredentials("Testes em API", () => {
   context("Testes em rotas com usuário autorizado", () => {
     beforeEach(() => {
+      cy.fixture("especialistas").as("especialistas");
       cy.loginApi(Cypress.env("email"), Cypress.env("senha"));
     });
 
@@ -26,6 +27,7 @@ describeWithCredentials("Testes em API", () => {
 
   context("Validações em respostas da API", () => {
     beforeEach(() => {
+      cy.fixture("especialistas").as("especialistas");
       cy.loginApi(Cypress.env("email"), Cypress.env("senha"));
     });
 
