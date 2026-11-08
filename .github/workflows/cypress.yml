@@ -1,50 +1,76 @@
-name: Cypress Tests
+name: Cypress E2E
+
 on:
   push:
     branches:
+      - main
+      - chore/portfolio-quality-improvements
       - testes
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   cypress-run:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        containers: [1, 2]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4      
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with: 
-          path: server      
-      - name: Start Server BackEnd
-        run: |
-          cd server
-          npm install
-          npm start &
-          until [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080)" == "200" ]; do
-            echo "Waiting for server to start..."
-            sleep 1
-          done
-          echo "Server is running successfully."
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            web/package-lock.json
+
+      - name: Install Cypress dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        run: npm ci
         working-directory: server
-      - name: Start Web App FrontEnd
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Start backend
         run: |
-          cd web
-          npm install
-          npm start &        
-      - name: Run Cypress Tests
+          npm start > /tmp/vollmed-backend.log 2>&1 &
+        working-directory: server
+
+      - name: Start frontend
+        run: |
+          CI=false npm start > /tmp/vollmed-frontend.log 2>&1 &
+        working-directory: web
+
+      - name: Run Cypress E2E
         uses: cypress-io/github-action@v6
         with:
+          install: false
+          wait-on: 'http://localhost:3000,http://localhost:8080'
+          wait-on-timeout: 120
           spec: |
             cypress/e2e/cadastro-sucesso.cy.js
             cypress/e2e/login-clinica.cy.js
             cypress/e2e/dashboard.cy.js
-          wait-on: 'http://localhost:3000,http://localhost:8080'
-          record: true
-          parallel: true
-          group: 'Cypress Tests'
-        env:
-          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#Sempre verifique a indentação do seu arquivo yaml
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vollmed-cypress-evidence
+          path: |
+            cypress/results
+            cypress/videos
+            cypress/screenshots
+            /tmp/vollmed-backend.log
+            /tmp/vollmed-frontend.log
+          if-no-files-found: ignore
+          retention-days: 7
