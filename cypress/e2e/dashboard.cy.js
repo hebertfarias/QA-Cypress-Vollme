@@ -3,6 +3,7 @@ const describeWithCredentials = hasCredentials ? describe : describe.skip;
 
 describeWithCredentials("Usuário logado na página de dashboard", () => {
   beforeEach(() => {
+    cy.fixture("especialistas").as("especialistas");
     cy.login(Cypress.env("email"), Cypress.env("senha"));
   });
 
